@@ -3,15 +3,16 @@ import ReactDOM from 'react-dom';
 import { LinkContainer } from 'react-router-bootstrap';
 import {
   Col,
+  MenuItem,
   Nav,
-  NavbarBrand,
+  NavDropdown,
+  NavItem,
   Navbar,
-  NavItem
+  NavbarBrand
 } from 'react-bootstrap';
 
 import navLinks from './links.json';
 import AvatarPointsNavItem from './Avatar-Points-Nav-Item.jsx';
-import NoPropsPassthrough from '../../utils/No-Props-Passthrough.jsx';
 
 const fCClogo = 'https://s3.amazonaws.com/freecodecamp/freecodecamp_logo.svg';
 
@@ -34,10 +35,7 @@ const propTypes = {
   picture: PropTypes.string,
   signedIn: PropTypes.bool,
   username: PropTypes.string,
-  isOnMap: PropTypes.bool,
   updateNavHeight: PropTypes.func,
-  toggleMapDrawer: PropTypes.func,
-  toggleMainChat: PropTypes.func,
   showLoading: PropTypes.bool,
   trackEvent: PropTypes.func.isRequired,
   loadCurrentChallenge: PropTypes.func.isRequired
@@ -80,89 +78,45 @@ export default class FCCNav extends React.Component {
     this.props.loadCurrentChallenge();
   }
 
-  renderMapLink(isOnMap, toggleMapDrawer) {
-    if (isOnMap) {
+  renderLink(isNavItem, { isReact, isDropdown, content, link, links, target }) {
+    const Component = isNavItem ? NavItem : MenuItem;
+    if (isDropdown) {
       return (
-        <NoPropsPassthrough>
-          <li role='presentation'>
-            <a
-              href='#'
-              onClick={ this.handleMapClickOnMap }
-              >
-              Map
-            </a>
-          </li>
-        </NoPropsPassthrough>
+        <NavDropdown
+          id={ `nav-${content}-dropdown` }
+          key={ content }
+          noCaret={ true }
+          title={ content }
+          >
+          { links.map(this.renderLink.bind(this, false)) }
+        </NavDropdown>
+      );
+    }
+    if (isReact) {
+      return (
+        <LinkContainer
+          key={ content }
+          onClick={ this[`handle${content}Click`] }
+          to={ link }
+          >
+          <Component
+            target={ target || null }
+            >
+            { content }
+          </Component>
+        </LinkContainer>
       );
     }
     return (
-      <LinkContainer
-        eventKey={ 1 }
-        to='/map'
+      <Component
+        href={ link }
+        key={ content }
+        onClick={ this[`handle${content}Click`] }
+        target={ target || null }
         >
-        <NavItem
-          onClick={ e => {
-            if (!(e.ctrlKey || e.metaKey)) {
-              e.preventDefault();
-              toggleMapDrawer();
-            }
-          }}
-          target='/map'
-          >
-          Map
-        </NavItem>
-      </LinkContainer>
+        { content }
+      </Component>
     );
-  }
-
-  renderChat(toggleMainChat) {
-    return (
-      <NavItem
-        eventKey={ 2 }
-        href='//gitter.im/freecodecamp/freecodecamp'
-        onClick={ e => {
-          if (!(e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            toggleMainChat();
-          }
-        }}
-        target='_blank'
-        >
-        Chat
-      </NavItem>
-    );
-  }
-
-  renderLinks() {
-    return navLinks.map(({ content, link, react, target }, index) => {
-      if (react) {
-        return (
-          <LinkContainer
-            eventKey={ index + 2 }
-            key={ content }
-            onClick={ this[`handle${content}Click`] }
-            to={ link }
-            >
-            <NavItem
-              target={ target || null }
-              >
-              { content }
-            </NavItem>
-          </LinkContainer>
-        );
-      }
-      return (
-        <NavItem
-          eventKey={ index + 1 }
-          href={ link }
-          key={ content }
-          onClick={ this[`handle${content}Click`] }
-          target={ target || null }
-          >
-          { content }
-        </NavItem>
-      );
-    });
   }
 
   renderSignIn(username, points, picture, showLoading) {
@@ -180,7 +134,6 @@ export default class FCCNav extends React.Component {
     } else {
       return (
         <NavItem
-          eventKey={ 2 }
           href='/signup'
           key='signup'
           >
@@ -195,11 +148,19 @@ export default class FCCNav extends React.Component {
       username,
       points,
       picture,
-      isOnMap,
-      toggleMapDrawer,
-      toggleMainChat,
       showLoading
     } = this.props;
+    let navLinksCache;
+
+    if (this._navLinksCache) {
+      navLinksCache = this._navLinksCache;
+    } else {
+      // we cache the rendered static links on the instance
+      // these do not change for the lifetime of the app
+      navLinksCache = this._navLinksCache = navLinks.map(
+        this.renderLink.bind(this, true)
+      );
+    }
 
     return (
       <Navbar
@@ -227,9 +188,7 @@ export default class FCCNav extends React.Component {
             navbar={ true }
             pullRight={ true }
             >
-            { this.renderMapLink(isOnMap, toggleMapDrawer) }
-            { this.renderChat(toggleMainChat) }
-            { this.renderLinks() }
+            { navLinksCache }
             { this.renderSignIn(username, points, picture, showLoading) }
           </Nav>
         </Navbar.Collapse>
